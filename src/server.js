@@ -120,3 +120,27 @@ server.post("/choice", async(req, res) => {
         return res.status(500).send(error.message);
     }
 });
+
+server.post("/choice/:id/vote", async(req, res) => {
+    const { id } = req.params;
+
+    try{
+        const searchChoice = await db.collection("choice").findOne({ _id: ObjectId(id)});
+
+        if(!searchChoice){
+            return res.status(404).send("Opção inexistente.");
+        }
+
+        await db.collection("vote").insertOne(
+            {
+                createdAt: dayjs().format("YYYY-MM-DD HH:mm"),
+                choiceId: id
+            }
+        );
+
+        return res.sendStatus(201);
+    }
+    catch(error){
+        return res.status(500).send(error,message);
+    }
+});
