@@ -33,6 +33,24 @@ server.get("/poll", async(req, res) => {
     }
 });
 
+server.get("/poll/:id/choice", async(req, res) => {
+    const { id } = req.params;
+
+    try{
+        const searchPoll = await db.collection("poll").findOne({ _id: ObjectId(id)});
+        const getChoice = await db.collection("choice").find({ pollId: id}).toArray();
+
+        if(!searchPoll){
+            return res.status(404).send("Enquete inexistente.");
+        }
+
+        return res.status(200).send(getChoice);
+    }
+    catch(error){
+        return res.status(500).send(error.message);
+    }
+});
+
 server.post("/poll", async(req, res) => {
     const { title, expireAt } = req.body;
     const schema = joi.object({ title: joi.string().required() });
