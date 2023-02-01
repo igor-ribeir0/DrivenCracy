@@ -53,31 +53,29 @@ server.get("/poll/:id/choice", async(req, res) => {
 
 server.get("/poll/:id/result", async(req, res) => {
     const { id } = req.params;
-    let inicialVote = 0;
-    let winner;
+    const voteList = [];
 
     try{
         const searchPoll = await db.collection("poll").findOne({ _id: ObjectId(id)});
-        const getChoices = await db.collection("choice").find({ pollId: id });
-        const getVote = await db.collection("vote").find({ _id: ObjectId(getChoices._id)});
+        const getChoices = await db.collection("choice").find({ pollId: id }).toArray();
 
         if(!searchPoll){
             return res.status(404).send("Enquete inexistente.");
         }
 
-        getVote.map(choice => {
-            if(choice.vote > inicialVote){
-                winner = choice.vote;
-            }
+        /*getChoices.map(async(choice) => {
+            voteList.push(await db.collection("vote").find({ choiceId: choice._id}));
         })
+        console.log(voteList);
+        */
 
         const voteData = {
             _id: id,
             title: searchPoll.title,
             expireAt: searchPoll.expire,
             result:{
-                title: "lele",
-                votes: winner.vote
+                title: "lalala",
+                votes: 21
             }
         }
 
@@ -93,21 +91,32 @@ server.post("/poll", async(req, res) => {
     const schema = joi.object({ title: joi.string().required() });
     const poll = { title };
     const validation = schema.validate(poll);
+    let monthExpire = Number(dayjs().format("MM"));
     let expire;
 
     if(validation.error){
         return res.status(422).send("Title não pode ser uma String vazia.");
     };
 
+    if(monthExpire + 1 === 13){
+        monthExpire = "01";
+    }
+    else if(monthExpire + 1 <= 9){
+        monthExpire = `0${monthExpire + 1}`;
+    }
+    else{
+        monthExpire = monthExpire + 1;
+    }
+
     if(expireAt.length === 0){
-        expire = `30 days ${dayjs().format("HH:mm")}`;
+        expire = dayjs().format(`YYYY-${monthExpire}-DD HH:mm`);
     }
     else{
         expire = expireAt;
     }
 
     try{
-        await db.collection("poll").insertOne({ title, expire });
+        await db.collection("poll").insertOne({ title, expireAt: expire });
         return res.sendStatus(201);
     }
     catch(error){
@@ -180,6 +189,7 @@ server.post("/choice/:id/vote", async(req, res) => {
                 {
                     createdAt: dayjs().format("YYYY-MM-DD HH:mm"),
                     choiceId: id,
+                    title: searchChoice.title,
                     vote: 1
                 }
             );
