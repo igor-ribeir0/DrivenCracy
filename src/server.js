@@ -51,6 +51,43 @@ server.get("/poll/:id/choice", async(req, res) => {
     }
 });
 
+server.get("/poll/:id/result", async(req, res) => {
+    const { id } = req.params;
+    let inicialVote = 0;
+    let winner;
+
+    try{
+        const searchPoll = await db.collection("poll").findOne({ _id: ObjectId(id)});
+        const getChoices = await db.collection("choice").find({ pollId: id });
+        const getVote = await db.collection("vote").find({ _id: ObjectId(getChoices._id)});
+
+        if(!searchPoll){
+            return res.status(404).send("Enquete inexistente.");
+        }
+
+        getVote.map(choice => {
+            if(choice.vote > inicialVote){
+                winner = choice.vote;
+            }
+        })
+
+        const voteData = {
+            _id: id,
+            title: searchPoll.title,
+            expireAt: searchPoll.expire,
+            result:{
+                title: "lele",
+                votes: winner.vote
+            }
+        }
+
+        return res.status(200).send(voteData);
+    }
+    catch(error){
+        return res.status(500).send(error.message);
+    }
+});
+
 server.post("/poll", async(req, res) => {
     const { title, expireAt } = req.body;
     const schema = joi.object({ title: joi.string().required() });
@@ -126,21 +163,36 @@ server.post("/choice/:id/vote", async(req, res) => {
 
     try{
         const searchChoice = await db.collection("choice").findOne({ _id: ObjectId(id)});
+        const existVote = await db.collection("vote").findOne({ choiceId: id });
 
         if(!searchChoice){
             return res.status(404).send("Opção inexistente.");
         }
 
-        await db.collection("vote").insertOne(
-            {
-                createdAt: dayjs().format("YYYY-MM-DD HH:mm"),
-                choiceId: id
-            }
-        );
+        if(existVote){
+            await db.collection("vote").updateOne(
+                { _id: ObjectId(existVote._id) },
+                { $inc: { vote: 1 } }
+            );
+        }
+        else{
+            await db.collection("vote").insertOne(
+                {
+                    createdAt: dayjs().format("YYYY-MM-DD HH:mm"),
+                    choiceId: id,
+                    vote: 1
+                }
+            );
+        }
 
         return res.sendStatus(201);
     }
     catch(error){
         return res.status(500).send(error,message);
     }
+});
+
+server.get("/vote", async(req, res) => {
+    const getVote = await db.collection("vote").find().toArray();
+    return res.send(getVote);
 });
