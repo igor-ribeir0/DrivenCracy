@@ -153,6 +153,10 @@ server.post("/choice", async(req, res) => {
             return res.status(409).send("Title já existente");
         }
 
+        if(searchId.expireAt === dayjs().format("YYYY-MM-DD")){
+            return res.sendStatus(403);
+        }
+
         await db.collection("choice").insertOne(
             {
                 title,
