@@ -177,9 +177,14 @@ server.post("/choice/:id/vote", async(req, res) => {
     try{
         const searchChoice = await db.collection("choice").findOne({ _id: ObjectId(id)});
         const existVote = await db.collection("vote").findOne({ choiceId: id });
+        const searchPoll = await db.collection("poll").findOne({ _id: ObjectId(searchChoice.pollId)});
 
         if(!searchChoice){
             return res.status(404).send("Opção inexistente.");
+        }
+
+        if(searchPoll.expireAt === dayjs().format("YYYY-MM-DD")){
+            return res.sendStatus(403);
         }
 
         if(existVote){
