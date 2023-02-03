@@ -53,29 +53,31 @@ server.get("/poll/:id/choice", async(req, res) => {
 
 server.get("/poll/:id/result", async(req, res) => {
     const { id } = req.params;
-    const voteList = [];
+    let moreVoted;
+    let inicialVote = 0;
 
     try{
         const searchPoll = await db.collection("poll").findOne({ _id: ObjectId(id)});
-        const getChoices = await db.collection("choice").find({ pollId: id }).toArray();
+        const getVotes = await db.collection("vote").find({ pollId: ObjectId(id) }).toArray();
 
         if(!searchPoll){
             return res.status(404).send("Enquete inexistente.");
         }
 
-        /*getChoices.map(async(choice) => {
-            voteList.push(await db.collection("vote").find({ choiceId: choice._id}));
-        })
-        console.log(voteList);
-        */
+        getVotes.map(option => {
+            if(option.vote > inicialVote){
+                moreVoted = option;
+                inicialVote = option.vote;
+            }
+        });
 
         const voteData = {
             _id: id,
             title: searchPoll.title,
-            expireAt: searchPoll.expire,
+            expireAt: searchPoll.expireAt,
             result:{
-                title: "lalala",
-                votes: 21
+                title: moreVoted.title,
+                votes: moreVoted.vote
             }
         }
 
@@ -198,6 +200,7 @@ server.post("/choice/:id/vote", async(req, res) => {
                 {
                     createdAt: dayjs().format("YYYY-MM-DD HH:mm"),
                     choiceId: id,
+                    pollId: searchPoll._id,
                     title: searchChoice.title,
                     vote: 1
                 }
